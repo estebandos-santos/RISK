@@ -7,7 +7,7 @@ pygame.init()
 
 
 # Window settings
-window = pygame.display.set_mode((800, 534))  
+window = pygame.display.set_mode((800, 700)) #800,534 size of the map
 pygame.display.set_caption("RISK - My first game")
 
 # Load the game map
@@ -42,6 +42,7 @@ player_territories = {player: [] for player in players}
 territoy_list = list(territories.keys())
 random.shuffle(territoy_list)
 
+
 for i, territory_color in enumerate(territoy_list):
     player = players[i % num_players]
     player_territories[player].append(territory_color)
@@ -53,19 +54,40 @@ for player, terr_list in player_territories.items():
         territories[terr]["armies"] = 1
         player_armies[player] -= 1
 
-# Debug : Print assigned territories and armies
-for player, terr_list in player_territories.items():
-    print(f"{player} owns : {[territories[t]["name"] for t in terr_list]}")
-    print(f"{player} starts with {player_armies[player]} armies left to place")
-
 # Initialize game variables
 current_player = players[0]
 selected_attacker = None # Store the selected attacking territory
 selected_defender = None # Store the selected defending territory
 placement_phase = True # This controls the placement phase
+attack_dice = [] # Store the dice rolls for the attacker
+defense_dice = [] # Store the dice rolls for the defender
 pygame.font.init()
 font = pygame.font.SysFont(None, 24)
     
+
+# Funcion to draw dice results
+def draw_dice_results():
+    dice_start_x = 300
+    dice_y = 550
+
+    # Attacker dice (red)
+    for i, value in enumerate(attack_dice):
+        pygame.draw.circle(window, (255, 0, 0), (dice_start_x + i * 40, dice_y), 15)
+        text_surface = font.render(str(value), True, (255, 255, 255))
+        window.blit(text_surface, (dice_start_x + i * 40 + 10, dice_y + 5))
+
+    # Defender dice (blue)
+    for i, value in enumerate(defense_dice):
+        pygame.draw.circle(window, (0, 0, 255), (dice_start_x + i * 40, dice_y + 40), 15)
+        text_surface = font.render(str(value), True, (255, 255, 255))
+        window.blit(text_surface, (dice_start_x + i * 40 + 10, dice_y + 45))
+
+
+# Debug : Print assigned territories and armies
+for player, terr_list in player_territories.items():
+    print(f"{player} owns : {[territories[t]["name"] for t in terr_list]}")
+    print(f"{player} starts with {player_armies[player]} armies left to place")
+
 
 # Game loop
 running = True
@@ -170,7 +192,9 @@ while running:
         text_surface = font.render(str(armies), True, (255,255, 255))
         window.blit(text_surface, position)
 
-    
+    # Draw the dice results
+    draw_dice_results()
+
     pygame.display.update()
 
 # Quit pygame properly
