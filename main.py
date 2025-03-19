@@ -113,6 +113,7 @@ if selected_players:
     player_colors = new_player_colors
 else:
     pygame.quit()
+    exit()
 
 # Determine the number of starting armies for each player
 army_distribution = {2: 40, 3: 35, 4: 30, 5: 25, 6: 20}
@@ -140,17 +141,22 @@ for player, terr_list in player_territories.items():
         player_armies[player] -= 1
 
 # Initialize game variables
-current_player = players[0]
+current_player_index = 0
+current_player = players[current_player_index]
+placement_phase = True # This controls the placement phase
+attack_phase = False # This controls the attack phase
+reinforcement_phase = False # This controls the reinforcement phase
+move_phase = False # This controls the move phase
 selected_attacker = None # Store the selected attacking territory
 selected_defender = None # Store the selected defending territory
-placement_phase = True # This controls the placement phase
 attack_dice = [] # Store the dice rolls for the attacker
 defense_dice = [] # Store the dice rolls for the defender
+
 pygame.font.init()
 font = pygame.font.SysFont(None, 24)
     
 
-# Funcion to draw dice results
+# Function to draw dice results
 def draw_dice_results():
     dice_start_x = 300
     dice_y = 550
@@ -173,86 +179,164 @@ for player, terr_list in player_territories.items():
     print(f"{player} owns : {[territories[t]["name"] for t in terr_list]}")
     print(f"{player} starts with {player_armies[player]} armies left to place")
 
+## Function to calculate reinforcements
+def calculate_reinforcements(player):
+    num_territories = len(player_territories[player])
+    reinforcements = max(3, num_territories // 3)
+    return reinforcements
+
+# Draw "End Turn" button
+def draw_end_turn_button():
+    button_rect = pygame.Rect(650, 600, 100, 40)
+    pygame.draw.rect(window, BLUE, button_rect)
+    draw_text("End Turn", 675, 610, WHITE)
+    return button_rect
+
+# Function to draw text
+def draw_text(text, x, y, color=BLACK):
+    text_surface = font.render(text, True, color)
+    window.blit(text_surface, (x, y))
+
+# Debug: Print assigned territories and armies
+for player, terr_list in player_territories.items():
+    print(f"{player} ownd : {[territories[t]['name'] for t in terr_list]}")
+    print(f"{player} starts with {player_armies[player]} armies left to place")
 
 # Game loop
 running = True
 while running:
+    window.fill((60, 179, 113))
+    window.blit(game_map, (0, 0))
+
+    # Draw territories
+    for color, data in territories.items():
+        position = data["position"]
+        owner = data["owner"]
+
+        if owner:
+            pygame.draw.circle(window, player_colors[owner], position, 7)
+    
+    # Number of armies on territories
+    for color, data in territories.items():
+        position = data["position"]
+        armies = data["armies"]
+        text_surface = font.render(str(armies), True, (255, 255, 255))
+        window.blit(text_surface, position)
+
+    
+    pygame.display.update()
+    
     for event in pygame.event.get():
         if event.type == pygame.QUIT:
             running = False
 
         # Detect mouse click
-        if event.type == pygame.MOUSEBUTTONDOWN:
+        elif event.type == pygame.MOUSEBUTTONDOWN:
             mouse_x, mouse_y = pygame.mouse.get_pos()
-            clicked_color = tuple(color_map.get_at((mouse_x, mouse_y))[:3])
+            
+            if 0 <= mouse_x < color_map.get_width() and 0 <= mouse_y < color_map.get_height():
+                clicked_color = tuple(color_map.get_at((mouse_x, mouse_y))[:3])
+            else:
+                clicked_color = None
+            
+            if clicked_color and clicked_color in territories:
+                 selected_territory = territories[clicked_color]
+
+            # Bouton "End Turn"
+            if 0 <= mouse_x <= 750 and 600 <= mouse_y <= 640:
+                if placement_phase:
+                    print("You need to place all yours armies")
+                elif reinforcement_phase:
+                    reinforcement_phase = False
+                    attack_phase = True
+                    print(f"{current_player} is on attack phase.")
+                elif attack_phase:
+                    attack_phase = False
+                    move_phase = True
+                    print(f"{current_player} is on movement phase.")
+                elif move_phase:
+                    move_phase = False
+                    reinforcement_phase = True
+                    current_player_index = (current_player_index + 1) % num_players
+                    current_player = players[current_player_index]
+                    player_armies[current_player] += calculate_reinforcements(current_player)
+                    print(f"{current_player} start his turn with {player_armies[current_player]} more armies.")
+
 
             
-            # PHASE 1 : PLACEMENT PHASE
-            if placement_phase:
-                if clicked_color in territories and territories[clicked_color]["owner"] == current_player:
-                    if player_armies[current_player] > 0:
-                        territories[clicked_color]["armies"] += 1
-                        player_armies[current_player] -= 1
-                        print(f"{current_player} placed an army on {territories[clicked_color]['name']}")
+            # PHASE 0 : INITIAL PLACEMENT PHASE
+            elif placement_phase and clicked_color in territories:
+                if territories[clicked_color]["owner"] == current_player and player_armies[current_player] > 0:
+                    territories[clicked_color]["armies"] += 1
+                    player_armies[current_player] -= 1
+                    print(f"{current_player} put an army on {territories[clicked_color]['name']}")
 
                         # Switch to the next player
-                        current_player = players[(players.index(current_player) + 1) % num_players]
-                        print(f"Now it's {current_player}'s turn to place an army")
+                    current_player_index = (current_player_index + 1) % num_players
+                    current_player = players[current_player_index]
+
                     if all(army == 0 for army in player_armies.values()):
                         placement_phase = False
-                        print("Placement phase is over. Let's start attacking!")
+                        reinforcement_phase = True
+                        print("No more placement. Start of reinforcement phase.")
 
+            # PHASE 1 : REINFORCEMENT PHASE
+            elif reinforcement_phase and clicked_color in territories:
+                if territories[clicked_color]["owner"] == current_player and player_armies[current_player] > 0:
+                    territories[clicked_color]["armies"] += 1
+                    player_armies[current_player] -= 1
+                    print(f"{current_player} reinforce {territories[clicked_color]['name']} with one army")
+            
             # PHASE 2 : ATTACK PHASE
-            else:
+            elif attack_phase and clicked_color in territories:
+                selected_territory = territories[clicked_color]
+                print(f"Clicked on {selected_territory['name']} owned by {selected_territory['owner']}")
 
-                # If clicked on a valid territory
-                if clicked_color in territories:
-                    selected_territory = territories[clicked_color]
-                    print(f"Clicked on {selected_territory['name']} owned by {selected_territory['owner']}")
+                if selected_territory["owner"] == current_player:
+                    selected_attacker = selected_territory
+                    print(f"{current_player} select {selected_attacker['name']} to attack.")
 
-                    # Selectin ATTACKER
-                    if selected_territory["owner"] == current_player:
-                        selected_attacker = selected_territory
-                        selected_defender = None
-                        print(f"{current_player} selected {selected_attacker['name']} to attack")
+                elif selected_attacker and selected_territory["owner"] != current_player:
+                    selected_defender = selected_territory
+                    print(f"{current_player} want to attack {selected_defender['name']} to {selected_attacker['name']}.")
 
-                    # Selecting DEFENDER
-                    elif selected_attacker and selected_territory["owner"] != current_player:
-                        selected_defender = selected_territory
-                        print(f"{current_player} wants to attack {selected_defender['name']} from {selected_attacker['name']}") 
+                # Selecting DEFENDER
+                elif selected_attacker and selected_territory["owner"] != current_player:
+                    selected_defender = selected_territory
+                    print(f"{current_player} wants to attack {selected_defender['name']} from {selected_attacker['name']}") 
 
-                        # Validate attack adjency
-                        if selected_defender["name"] in selected_attacker["adjacent"]:
-                            print(f"✅ Attack Validated: {selected_attacker['name']} → {selected_defender['name']}")
+                    # Validate attack adjency
+                    if selected_defender["name"] in selected_attacker["adjacent"]:
+                        print(f"✅ Attack Validated: {selected_attacker['name']} → {selected_defender['name']}")
 
-                            # Dice roll
-                            if selected_attacker["armies"] > 1:
-                                attack_dice = sorted([random.randint(1, 6) for _ in range(min(3, selected_attacker["armies"] - 1))], reverse=True)
-                                defense_dice = sorted([random.randint(1, 6) for _ in range(min(2, selected_defender["armies"]))], reverse=True)
+                        # Dice roll
+                        if selected_attacker["armies"] > 1:
+                            attack_dice = sorted([random.randint(1, 6) for _ in range(min(3, selected_attacker["armies"] - 1))], reverse=True)
+                            defense_dice = sorted([random.randint(1, 6) for _ in range(min(2, selected_defender["armies"]))], reverse=True)
 
-                                print(f"{current_player} rolled {attack_dice}, {selected_defender['owner']} rolled {defense_dice}")
+                            print(f"{current_player} rolled {attack_dice}, {selected_defender['owner']} rolled {defense_dice}")
 
-                                # Compare dice rolls
-                                for i in range(min(len(attack_dice), len(defense_dice))):
-                                    if attack_dice[i] > defense_dice[i]:
-                                        selected_defender["armies"] -= 1
-                                    else:
-                                        selected_attacker["armies"] -= 1
+                            # Compare dice rolls
+                            for i in range(min(len(attack_dice), len(defense_dice))):
+                                if attack_dice[i] > defense_dice[i]:
+                                    selected_defender["armies"] -= 1
+                                else:
+                                    selected_attacker["armies"] -= 1
 
-                                # If defense has no more armies, the attacker wins
-                                if selected_defender["armies"] == 0:
-                                    print(f"{current_player} conquered {selected_defender['name']} from {selected_defender['owner']}")
-                                    selected_defender["owner"] = current_player
-                                    selected_defender["armies"] = selected_attacker["armies"] - 1
-                                    selected_attacker["armies"] = 1
+                            # If defense has no more armies, the attacker wins
+                            if selected_defender["armies"] == 0:
+                                print(f"{current_player} conquered {selected_defender['name']} from {selected_defender['owner']}")
+                                selected_defender["owner"] = current_player
+                                selected_defender["armies"] = selected_attacker["armies"] - 1
+                                selected_attacker["armies"] = 1
 
-                                # Reset the selected territories
-                                selected_attacker = None
-                                selected_defender = None
+                            # Reset the selected territories
+                            selected_attacker = None
+                            selected_defender = None
 
-                            else:
-                                print("Attack not possible! You need at least 2 armies to attack")
-                                selected_defender = None   
+                        else:
+                            print("Attack not possible! You need at least 2 armies to attack")
+                            selected_defender = None   
 
            
 
@@ -280,7 +364,13 @@ while running:
     # Draw the dice results
     draw_dice_results()
 
+    # Draw End Turn button
+    end_turn_butto_rect = draw_end_turn_button()
+
+    # Update Screen
     pygame.display.update()
 
 # Quit pygame properly
 pygame.quit()
+
+
