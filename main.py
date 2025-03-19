@@ -1,33 +1,118 @@
 import pygame
 import random
-from territories import territories # Import territories from territories.py
-
+from territories import territories  # Import territories from territories.py
 
 pygame.init()
 
-
 # Window settings
-window = pygame.display.set_mode((800, 700)) #800,534 size of the map
+WIDTH, HEIGHT = 800, 700
+window = pygame.display.set_mode((WIDTH, HEIGHT))
 pygame.display.set_caption("RISK - My first game")
 
 # Load the game map
 game_map = pygame.image.load("img/maprisk.png")
-# Hide the hidden color map
 color_map = pygame.image.load("img/mapcolor.png")
 
-# Variable to store the last click position
-#last_click_pos = None
+# Colors
+WHITE = (255, 255, 255)
+BLACK = (0, 0, 0)
+RED = (200, 0, 0)
+GREEN = (0, 200, 0)
+BLUE = (0, 0, 200)
+GRAY = (150, 150, 150)
 
-#Definie players
-players = ["Player 1", "Player 2"] #"Player 3", "Player 4", "Player 5", "Player 6"]
+font = pygame.font.SysFont(None, 32)
+
+# Default players
+players = ["Player 1", "Player 2"]
+num_players = 2
+max_players = 6
 player_colors = {
-    "Player 1": (255, 0, 0), # Red
-    "Player 2": (0, 255, 0), # Green
-    "Player 3": (0, 0, 255), # Blue
-    "Player 4": (255, 255, 0), # Yellow
-    "Player 5": (255, 0, 255), # Purple
-    "Player 6": (0, 255, 255) # Cyan
+    "Player 1": (255, 0, 0),
+    "Player 2": (0, 255, 0),
+    "Player 3": (0, 0, 255),
+    "Player 4": (255, 255, 0),
+    "Player 5": (255, 0, 255),
+    "Player 6": (0, 255, 255)
 }
+
+# UI Elements
+input_boxes = []
+player_inputs = ["Player 1", "Player 2", "Player 3", "Player 4", "Player 5", "Player 6"]
+
+def draw_text(text, x, y, color=BLACK):
+    text_surface = font.render(text, True, color)
+    window.blit(text_surface, (x, y))
+
+def draw_buttons():
+    pygame.draw.rect(window, GREEN if num_players > 2 else GRAY, (250, 500, 100, 40))  
+    pygame.draw.rect(window, RED if num_players < max_players else GRAY, (450, 500, 100, 40))
+    pygame.draw.rect(window, BLUE, (350, 560, 100, 40))
+    draw_text("-", 290, 510, WHITE)
+    draw_text("+", 490, 510, WHITE)
+    draw_text("Start", 380, 570, WHITE)
+
+def main_menu():
+    global num_players
+    running = True
+    active_box = None
+    
+    while running:
+        window.fill(WHITE)
+        draw_text("Select Number of Players:", 300, 200)
+        draw_text(f"{num_players}", 390, 240)
+        draw_buttons()
+        
+        for i in range(num_players):
+            pygame.draw.rect(window, BLACK if active_box == i else GRAY, (300, 270 + i * 40, 200, 30), 2)
+            draw_text(player_inputs[i], 310, 275 + i * 40)
+        
+        pygame.display.update()
+        
+        for event in pygame.event.get():
+            if event.type == pygame.QUIT:
+                pygame.quit()
+                return None
+            elif event.type == pygame.MOUSEBUTTONDOWN:
+                x, y = event.pos
+                if 250 <= x <= 350 and 500 <= y <= 540 and num_players > 2:
+                    num_players -= 1
+                elif 450 <= x <= 550 and 500 <= y <= 540 and num_players < max_players:
+                    num_players += 1
+                elif 350 <= x <= 450 and 560 <= y <= 600:
+                    return player_inputs[:num_players]
+                for i in range(num_players):
+                    if 300 <= x <= 500 and 270 + i * 40 <= y <= 300 + i * 40:
+                        active_box = i
+                        break
+                else:
+                    active_box = None
+            elif event.type == pygame.KEYDOWN and active_box is not None:
+                if event.key == pygame.K_RETURN:
+                    active_box = None
+                elif event.key == pygame.K_BACKSPACE:
+                    player_inputs[active_box] = player_inputs[active_box][:-1]
+                else:
+                    player_inputs[active_box] += event.unicode
+
+# Start the game after selection
+selected_players = main_menu()
+if selected_players:
+    players = selected_players
+    num_players = len(players)
+
+    # Update player colors
+    new_player_colors = {}
+    available_colors = list(player_colors.values())
+    for i, player in enumerate(players):
+        if i < len(available_colors):
+            new_player_colors[player] = available_colors[i]
+        else:
+            new_player_colors[player] = (random.randint(0, 255), random.randint(0, 255), random.randint(0, 255))
+    
+    player_colors = new_player_colors
+else:
+    pygame.quit()
 
 # Determine the number of starting armies for each player
 army_distribution = {2: 40, 3: 35, 4: 30, 5: 25, 6: 20}
@@ -199,4 +284,3 @@ while running:
 
 # Quit pygame properly
 pygame.quit()
-
