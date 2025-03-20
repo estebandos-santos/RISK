@@ -2,7 +2,7 @@ territories = {
     (243, 99, 35): {"name": "Iceland", "armies": 0, "owner": None, "position": (327, 113), "adjacent": ["Greenland", "Great Britain", "Scandinavia"]},
     (0, 120, 215): {"name": "Great Britain", "armies": 0, "owner": None, "position": (318, 169), "adjacent": ["Iceland", "Western Europe", "Northern Europe", "Scandinavia"]},
     (251, 174, 23): {"name": "Western Europe", "armies": 0, "owner": None, "position": (336, 245), "adjacent": ["Great Britain", "North Africa", "Southern Europe", "Northern Europe"]},
-    (254, 212, 48): {"name": "Scandinavia", "armies": 0, "owner": None, "position": (397, 95), "adjacent": ["Iceland", "Great Britain", "Northern Europe"]},
+    (254, 212, 48): {"name": "Scandinavia", "armies": 0, "owner": None, "position": (397, 95), "adjacent": ["Iceland", "Great Britain", "Northern Europe", "Ukraine"]},
     (227, 24, 45): {"name": "Northern Europe", "armies": 0, "owner": None, "position": (392, 175), "adjacent": ["Great Britain", "Scandinavia", "Sourthern Europe", "Ukraine", "Western Europe"]},
     (91, 49, 141): {"name": "Southern Europe", "armies": 0, "owner": None, "position": (406, 228), "adjacent": ["Western Europe", "Northern Europe", "Ukraine", "Middle East", "Egypt", "North Africa"]},
     (145, 75, 184): {"name": "Ukraine", "armies": 0, "owner": None, "position": (467, 140), "adjacent": ["Northern Europe", "Scandinavia", "Southern Europe", "Middle East", "Afghanistan", "Ural"]},

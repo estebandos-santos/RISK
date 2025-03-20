@@ -1,6 +1,7 @@
 import pygame
 import random
 from territories import territories  # Import territories from territories.py
+from rules import draw_rules
 
 pygame.init()
 
@@ -14,7 +15,8 @@ game_map = pygame.image.load("img/maprisk.png")
 color_map = pygame.image.load("img/mapcolor.png")
 # Load Button png
 end_phase_img = pygame.image.load("img/next.png")
-
+# Load Button rules
+rules_img = pygame.image.load("img/rules.png")
 
 # Colors
 WHITE = (255, 255, 255)
@@ -98,18 +100,21 @@ def main_menu():
                 else:
                     player_inputs[active_box] += event.unicode
 
-# Scale button
+# Scale button pass
 scale_factor = 0.2
 new_width = int(end_phase_img.get_width() * scale_factor)
 new_height = int(end_phase_img.get_height() * scale_factor)
 end_phase_img = pygame.transform.scale(end_phase_img, (new_width, new_height))
 
-# Position button
+# Position button pass
 margin = 10
 button_x = WIDTH - new_width - margin 
 button_y = HEIGHT - new_height - margin
 end_phase_rect = pygame.Rect(button_x, button_y, new_width, new_height)
 
+# Scale button rules
+rules_img = pygame.transform.scale(rules_img, (50, 50))
+rules_rect = rules_img.get_rect(topleft=(10, 10))
 
 # Start the game after selection
 selected_players = main_menu()
@@ -220,9 +225,13 @@ while running:
 
         elif event.type == pygame.MOUSEBUTTONDOWN:
             mouse_x, mouse_y = pygame.mouse.get_pos()
-            
+
+            # Check if the "Rules" button is clicked
+            if rules_rect.collidepoint(event.pos):
+                draw_rules(window, font)
+
             # Check if the "End Phase" button is clicked
-            if end_phase_rect.collidepoint(mouse_x, mouse_y):
+            elif end_phase_rect.collidepoint(mouse_x, mouse_y):
                 print(f"{current_player} ends their turn.")
                 if placement_phase:
                     print("You need to place all your armies")
@@ -330,5 +339,8 @@ while running:
     # Draw the "End Phase" button (drawn last to ensure it's on top)
     window.blit(end_phase_img, end_phase_rect.topleft)
     
+    # Draw the "Rules" button
+    window.blit(rules_img, rules_rect.topleft)
+
     # Update display
     pygame.display.update()
