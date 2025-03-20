@@ -1,7 +1,7 @@
 import pygame
 import random
 from territories import territories  # Import territories from territories.py
-from rules import draw_rules
+from rules import draw_rules # Import rules from rules.py
 
 pygame.init()
 
