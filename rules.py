@@ -14,14 +14,15 @@ def draw_rules(window, font):
     scroll_y = 0
     line_height = 30
     max_width = 540
-    max_scroll = max(0, len(rules_text) * line_height - 450)
+    text_height = len(rules_text) * line_height
+    max_scroll = max(0, text_height - 450)
 
      # Surface
     rules_surface = pygame.Surface((600, 500), pygame.SRCALPHA)
-    rules_surface.fill(background_color)
-
+    
 
     while running:
+        rules_surface.fill(background_color)
         window.blit(rules_surface, (100, 100))
 
         # Clip the text to stay in Wondow
@@ -57,7 +58,7 @@ def draw_rules(window, font):
                     y_offset += line_height
                                     
 
-        y_offset += line_height
+            y_offset += line_height
 
         # Display scrollbar
         if max_scroll > 0:
@@ -75,10 +76,11 @@ def draw_rules(window, font):
                 return
             elif event.type == pygame.KEYDOWN:
                 if event.key == pygame.K_ESCAPE:
-                    running = False  # Close Rules
-            elif event.type == pygame.MOUSEBUTTONDOWN:
-                if event.button == 4: # Scroll Up
-                    scroll_y == max(0, scroll_y - line_height)
-                elif event.button == 5: # Scroll down
-                    scroll_y == min(max_scroll, scroll_y + line_height)
+                    running = False  # Close the rules window
 
+            # NEW: Fix scrolling
+            elif event.type == pygame.MOUSEBUTTONDOWN:
+                if event.button == 4:  # Scroll Up
+                    scroll_y = max(0, scroll_y - line_height)
+                elif event.button == 5:  # Scroll Down
+                    scroll_y = min(max_scroll, scroll_y + line_height)
