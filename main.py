@@ -1,7 +1,7 @@
 import pygame
 import random
 from territories import territories  # Import territories from territories.py
-from rules import draw_rules # Import rules from rules.py
+from rules import draw_rules         # Import rules from rules.py
 
 pygame.init()
 
@@ -121,7 +121,7 @@ selected_players = main_menu()
 if selected_players:
     players = selected_players
     num_players = len(players)
-
+    
     # Update player colors
     new_player_colors = {}
     available_colors = list(player_colors.values())
@@ -160,15 +160,19 @@ for player, terr_list in player_territories.items():
         territories[terr]["armies"] = 1
         player_armies[player] -= 1
 
-# Initialize game variables
+# Initialize game variables for phases
 current_player_index = 0
 current_player = players[current_player_index]
 placement_phase = True      # This controls the placement phase
 attack_phase = False        # This controls the attack phase
 reinforcement_phase = False # This controls the reinforcement phase
-move_phase = False          # This controls the move phase
-selected_attacker = None    # Store the selected attacking territory
-selected_defender = None    # Store the selected defending territory
+move_phase = False          # This controls the movement phase
+
+selected_attacker = None    # For attack phase
+selected_defender = None    # For attack phase
+selected_source = None       # For movement phase (source territory)
+selected_destination = None  # For movement phase (destination territory)
+
 attack_dice = []            # Store the dice rolls for the attacker
 defense_dice = []           # Store the dice rolls for the defender
 
@@ -255,14 +259,14 @@ while running:
             elif 0 <= mouse_x < color_map.get_width() and 0 <= mouse_y < color_map.get_height():
                 clicked_color = tuple(color_map.get_at((mouse_x, mouse_y))[:3])
                 if clicked_color and clicked_color in territories:
-                    selected_territory = territories[clicked_color]
-                    
+                    territory = territories[clicked_color]
+
                     # PHASE 0: INITIAL PLACEMENT PHASE
                     if placement_phase:
-                        if selected_territory["owner"] == current_player and player_armies[current_player] > 0:
-                            selected_territory["armies"] += 1
+                        if territory["owner"] == current_player and player_armies[current_player] > 0:
+                            territory["armies"] += 1
                             player_armies[current_player] -= 1
-                            print(f"{current_player} placed an army on {selected_territory['name']}")
+                            print(f"{current_player} placed an army on {territory['name']}")
                             
                             # Move to the next player
                             current_player_index = (current_player_index + 1) % num_players
@@ -271,22 +275,22 @@ while running:
                                 placement_phase = False
                                 reinforcement_phase = True
                                 print("No more placements. Starting reinforcement phase.")
-                    
+
                     # PHASE 1: REINFORCEMENT PHASE
                     elif reinforcement_phase:
-                        if selected_territory["owner"] == current_player and player_armies[current_player] > 0:
-                            selected_territory["armies"] += 1
+                        if territory["owner"] == current_player and player_armies[current_player] > 0:
+                            territory["armies"] += 1
                             player_armies[current_player] -= 1
-                            print(f"{current_player} reinforces {selected_territory['name']} with one army")
-                    
+                            print(f"{current_player} reinforces {territory['name']} with one army")
+
                     # PHASE 2: ATTACK PHASE
                     elif attack_phase:
-                        print(f"Clicked on {selected_territory['name']} owned by {selected_territory['owner']}")
-                        if selected_territory["owner"] == current_player:
-                            selected_attacker = selected_territory
+                        print(f"Clicked on {territory['name']} owned by {territory['owner']}")
+                        if territory["owner"] == current_player:
+                            selected_attacker = territory
                             print(f"{current_player} selects {selected_attacker['name']} to attack from.")
-                        elif selected_attacker and selected_territory["owner"] != current_player:
-                            selected_defender = selected_territory
+                        elif selected_attacker and territory["owner"] != current_player:
+                            selected_defender = territory
                             print(f"{current_player} wants to attack {selected_defender['name']} from {selected_attacker['name']}")
                             
                             # Validate attack adjacency (check if the territories are adjacent)
@@ -308,12 +312,42 @@ while running:
                                         selected_defender["armies"] = selected_attacker["armies"] - 1
                                         selected_attacker["armies"] = 1
                                     
-                                    # Reset selected territories after the attack
+                                    # Reset selections after the attack
                                     selected_attacker = None
                                     selected_defender = None
                                 else:
                                     print("Attack not possible! You need at least 2 armies to attack.")
                                     selected_defender = None
+
+                    # PHASE 3: MOVEMENT PHASE
+                    elif move_phase:
+                        if 0 <= mouse_x < color_map.get_width() and 0 <= mouse_y < color_map.get_height():
+                            # Territory clicked
+                            if clicked_color and clicked_color in territories:
+                                territory = territories[clicked_color]
+                                # Check if the territory belongs to the current player
+                                if territory["owner"] == current_player:
+                                    # Try selecting a source territory
+                                    if selected_source is None:
+                                        if territory["armies"] > 1:
+                                            selected_source = territory
+                                            print(f"{current_player} selects {territory['name']} as the source for movement.")
+                                        else:
+                                            print("Not enough armies in this territory to move.")
+                                    # Try selecting a destination territory
+                                    elif selected_source is not None and territory != selected_source:
+                                        selected_destination = territory
+                                        # Check if the destination is adjacent to the source
+                                        if selected_destination["name"] in selected_source["adjacent"]:
+                                            armies_to_move = selected_source["armies"] - 1
+                                            selected_destination["armies"] += armies_to_move
+                                            selected_source["armies"] = 1
+                                            print(f"{current_player} moves {armies_to_move} armies from {selected_source['name']} to {selected_destination['name']}.")
+                                        else:
+                                            print(f"{selected_destination['name']} is not adjacent to {selected_source['name']}.")
+                                        # Reset selections after the movement
+                                        selected_source = None
+                                        selected_destination = None
 
     # --- Rendering Phase ---
     window.fill((60, 179, 113))
