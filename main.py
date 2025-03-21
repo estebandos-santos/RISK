@@ -179,6 +179,29 @@ defense_dice = []           # Store the dice rolls for the defender
 pygame.font.init()
 font = pygame.font.SysFont(None, 24)
     
+
+# Function to verify if two territories are adjacent
+def is_reachable(source, destination, territories):
+    owner = source["owner"]
+    # Breadth-first search to find a path from source to destination
+    visited = set()
+    queue = [source["name"]]
+    while queue:
+        current = queue.pop(0)
+        if current == destination["name"]:
+            return True
+        visited.add(current)
+        # Looking for name of the current territory
+        for terr in territories.values():
+            if terr["name"] == current:
+                for neighbor in terr["adjacent"]:
+                    # Check if the neighbor is owned by the same player and has not been visited
+                    for t in territories.values():
+                        if t["name"] == neighbor and t["owner"] == owner and neighbor not in visited:
+                            queue.append(neighbor)
+                break
+    return False
+
 # Function to draw dice results
 def draw_dice_results():
     dice_start_x = 300
@@ -196,10 +219,6 @@ def draw_dice_results():
         text_surface = font.render(str(value), True, (255, 255, 255))
         window.blit(text_surface, (dice_start_x + i * 40 + 10, dice_y + 45))
 
-# Debug : Print assigned territories and armies
-for player, terr_list in player_territories.items():
-    print(f"{player} owns : {[territories[t]['name'] for t in terr_list]}")
-    print(f"{player} starts with {player_armies[player]} armies left to place")
 
 # Function to calculate reinforcements
 def calculate_reinforcements(player):
@@ -213,6 +232,11 @@ def draw_end_turn_button():
     pygame.draw.rect(window, BLUE, button_rect)
     draw_text("End Turn", 675, 610, WHITE)
     return button_rect
+
+# Debug : Print assigned territories and armies
+for player, terr_list in player_territories.items():
+    print(f"{player} owns : {[territories[t]['name'] for t in terr_list]}")
+    print(f"{player} starts with {player_armies[player]} armies left to place")
 
 # Debug: Print assigned territories and armies (version 2)
 for player, terr_list in player_territories.items():
@@ -319,35 +343,32 @@ while running:
                                     print("Attack not possible! You need at least 2 armies to attack.")
                                     selected_defender = None
 
-                    # PHASE 3: MOVEMENT PHASE
+                   # PHASE 3: Movement (Fortification)
                     elif move_phase:
-                        if 0 <= mouse_x < color_map.get_width() and 0 <= mouse_y < color_map.get_height():
-                            # Territory clicked
-                            if clicked_color and clicked_color in territories:
-                                territory = territories[clicked_color]
-                                # Check if the territory belongs to the current player
-                                if territory["owner"] == current_player:
-                                    # Try selecting a source territory
-                                    if selected_source is None:
-                                        if territory["armies"] > 1:
-                                            selected_source = territory
-                                            print(f"{current_player} selects {territory['name']} as the source for movement.")
-                                        else:
-                                            print("Not enough armies in this territory to move.")
-                                    # Try selecting a destination territory
-                                    elif selected_source is not None and territory != selected_source:
-                                        selected_destination = territory
-                                        # Check if the destination is adjacent to the source
-                                        if selected_destination["name"] in selected_source["adjacent"]:
-                                            armies_to_move = selected_source["armies"] - 1
-                                            selected_destination["armies"] += armies_to_move
-                                            selected_source["armies"] = 1
-                                            print(f"{current_player} moves {armies_to_move} armies from {selected_source['name']} to {selected_destination['name']}.")
-                                        else:
-                                            print(f"{selected_destination['name']} is not adjacent to {selected_source['name']}.")
-                                        # Reset selections after the movement
-                                        selected_source = None
-                                        selected_destination = None
+                        # Pour le mouvement, le territoire cliqué doit appartenir au joueur courant.
+                        if territory["owner"] == current_player:
+                            # Si aucune source n'est encore sélectionnée, on la choisit si elle possède plus d'une armée.
+                            if selected_source is None:
+                                if territory["armies"] > 1:
+                                    selected_source = territory
+                                    print(f"{current_player} selects {territory['name']} as the source for movement.")
+                                else:
+                                    print("Not enough armies in this territory to move.")
+                            # Sinon, le territoire cliqué devient la destination s'il est différent.
+                            elif selected_source is not None and territory != selected_source:
+                                # Vérifier que le territoire destination est accessible via une chaîne d'adjacence
+                                if is_reachable(selected_source, territory, territories):
+                                    selected_destination = territory
+                                    armies_to_move = selected_source["armies"] - 1
+                                    selected_destination["armies"] += armies_to_move
+                                    selected_source["armies"] = 1
+                                    print(f"{current_player} moves {armies_to_move} armies from {selected_source['name']} to {selected_destination['name']}.")
+                                    # On limite le mouvement à une seule opération par tour
+                                    move_phase = False
+                                else:
+                                    print(f"{territory['name']} is not reachable from {selected_source['name']}.")
+                                selected_source = None
+                                selected_destination = None
 
     # --- Rendering Phase ---
     window.fill((60, 179, 113))
