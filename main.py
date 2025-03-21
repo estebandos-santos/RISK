@@ -167,6 +167,7 @@ placement_phase = True      # This controls the placement phase
 attack_phase = False        # This controls the attack phase
 reinforcement_phase = False # This controls the reinforcement phase
 move_phase = False          # This controls the movement phase
+movement_done = False       # This controls the movement phase
 
 selected_attacker = None    # For attack phase
 selected_defender = None    # For attack phase
@@ -179,6 +180,20 @@ defense_dice = []           # Store the dice rolls for the defender
 pygame.font.init()
 font = pygame.font.SysFont(None, 24)
     
+# Function next turn button
+def next_turn():
+    global current_player_index, current_player, reinforcement_phase, attack_phase, move_phase, movement_done
+    # Initialize the phase for new turn
+    move_phase = False
+    attack_phase = False
+    reinforcement_phase = True
+    movement_done = False
+    # Move to the next player
+    current_player_index = (current_player_index + 1) % num_players
+    current_player = players[current_player_index]
+    player_armies[current_player] += calculate_reinforcements(current_player)
+    print(f"Turn passed. {current_player} starts with {player_armies[current_player]} armies.")
+
 
 # Function to verify if two territories are adjacent
 def is_reachable(source, destination, territories):
@@ -201,6 +216,22 @@ def is_reachable(source, destination, territories):
                             queue.append(neighbor)
                 break
     return False
+
+# Function to victory check
+def check_victory():
+    owner_counts = {}
+    for terr in territories.values():
+        owner = terr.get("owner")
+        if owner: 
+            owner_counts[owner] = owner_counts.get(owner, 0) + 1
+    
+    # if a plyaer owns all territories, he wins
+    total_territories = len(territories)
+    for owner, count in owner_counts.items():
+        if count == total_territories:
+            return owner
+    return None
+
 
 # Function to draw dice results
 def draw_dice_results():
@@ -272,12 +303,7 @@ while running:
                     move_phase = True
                     print(f"{current_player} is in movement phase.")
                 elif move_phase:
-                    move_phase = False
-                    reinforcement_phase = True
-                    current_player_index = (current_player_index + 1) % num_players
-                    current_player = players[current_player_index]
-                    player_armies[current_player] += calculate_reinforcements(current_player)
-                    print(f"{current_player} starts their turn with {player_armies[current_player]} additional armies.")
+                    next_turn()
 
             # Handle click on a territory using the color map
             elif 0 <= mouse_x < color_map.get_width() and 0 <= mouse_y < color_map.get_height():
@@ -345,32 +371,30 @@ while running:
 
                    # PHASE 3: Movement (Fortification)
                     elif move_phase:
-                        # Pour le mouvement, le territoire cliqué doit appartenir au joueur courant.
-                        if territory["owner"] == current_player:
-                            # Si aucune source n'est encore sélectionnée, on la choisit si elle possède plus d'une armée.
-                            if selected_source is None:
-                                if territory["armies"] > 1:
-                                    selected_source = territory
-                                    print(f"{current_player} selects {territory['name']} as the source for movement.")
-                                else:
-                                    print("Not enough armies in this territory to move.")
-                            # Sinon, le territoire cliqué devient la destination s'il est différent.
-                            elif selected_source is not None and territory != selected_source:
-                                # Vérifier que le territoire destination est accessible via une chaîne d'adjacence
-                                if is_reachable(selected_source, territory, territories):
-                                    selected_destination = territory
-                                    armies_to_move = selected_source["armies"] - 1
-                                    selected_destination["armies"] += armies_to_move
-                                    selected_source["armies"] = 1
-                                    print(f"{current_player} moves {armies_to_move} armies from {selected_source['name']} to {selected_destination['name']}.")
-                                    # On limite le mouvement à une seule opération par tour
-                                    move_phase = False
-                                else:
-                                    print(f"{territory['name']} is not reachable from {selected_source['name']}.")
-                                selected_source = None
-                                selected_destination = None
+                        if not movement_done:
+                            if territory["owner"] == current_player:
+                                if selected_source is None:
+                                    if territory["armies"] > 1:
+                                        selected_source = territory
+                                        print(f"{current_player} selects {territory['name']} as the source for movement.")
+                                    else:
+                                        print("Not enough armies in this territory to move.")
+                                elif selected_source is not None and territory != selected_source:
+                                    if is_reachable(selected_source, territory, territories):
+                                        selected_destination = territory
+                                        armies_to_move = selected_source["armies"] - 1
+                                        selected_destination["armies"] += armies_to_move
+                                        selected_source["armies"] = 1
+                                        print(f"{current_player} moves {armies_to_move} armies from {selected_source['name']} to {selected_destination['name']}.")
+                                        movement_done = True  # One movement per turn
+                                    else:
+                                        print(f"{territory['name']} is not reachable from {selected_source['name']}.")
+                                    selected_source = None
+                                    selected_destination = None
+                        else:
+                            print("Movement already done this turn.")
 
-    # --- Rendering Phase ---
+    # Rendering Phase 
     window.fill((60, 179, 113))
     window.blit(game_map, (0, 0))
     
