@@ -1,7 +1,9 @@
 import pygame
 import random
 from territories import territories  # Import territories from territories.py
+from territories import continents     # Import continents from continents.py
 from rules import draw_rules         # Import rules from rules.py
+
 
 pygame.init()
 
@@ -224,6 +226,7 @@ def is_reachable(source, destination, territories):
                 break
     return False
 
+
 # Function to victory check
 def check_victory():
     owner_counts = {}
@@ -261,8 +264,23 @@ def draw_dice_results():
 # Function to calculate reinforcements
 def calculate_reinforcements(player):
     num_territories = sum(1 for terr in territories.values() if terr["owner"] == player)
-    reinforcements = max(3, num_territories // 3)
-    return reinforcements
+    base_reinforcements = max(3, num_territories // 3)
+
+    # Check for continent bonuses
+    bonus = 0
+    bonus_messages = []
+    for continent, info in continents.items():
+        if all(any(t["name"] == terr_name and t["owner"] == player for t in territories.values())
+            for terr_name in info["territories"]):
+            bonus += info["bonus"]
+            bonus_messages.append(f"Controlled {continent} for a bonus of {info['bonus']} armies")
+    total_reinforcements = base_reinforcements + bonus
+    if bonus_messages:
+        print(f"{player} receives {total_reinforcements} armies ({base_reinforcements} base + {bonus} bonus)") 
+    else:
+        print(f"{player} receives {total_reinforcements} armies ({base_reinforcements} base, no continent bonus)")
+ 
+    return total_reinforcements
 
 # Draw "End Turn" button
 def draw_end_turn_button():
