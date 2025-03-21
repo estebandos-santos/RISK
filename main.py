@@ -291,13 +291,25 @@ while running:
 
             # Check if the "End Phase" button is clicked
             elif end_phase_rect.collidepoint(mouse_x, mouse_y):
-                print(f"{current_player} ends their turn.")
+                print(f"{current_player} attempts to end his turn.")
                 if placement_phase:
-                    print("You need to place all your armies")
+                    if player_armies[current_player] > 0:
+                        print(f"{current_player} still has {player_armies[current_player]} armies to place.")
+                    else:
+                        current_player_index = (current_player_index + 1) % num_players
+                        current_player = players[current_player_index]
+                        print(f"Turn passed. It's now {current_player}'s turn.")
+                        if all(army == 0 for army in player_armies.values()):
+                            placement_phase = False
+                            reinforcement_phase = True
+                            print("No more placements. Starting reinforcement phase.")                        
                 elif reinforcement_phase:
-                    reinforcement_phase = False
-                    attack_phase = True
-                    print(f"{current_player} is in attack phase.")
+                    if player_armies[current_player] > 0:
+                        print(f"{current_player} still has {player_armies[current_player]} armies to place.")
+                    else:
+                        reinforcement_phase = False
+                        attack_phase = True
+                        print(f"{current_player} is in attack phase.")
                 elif attack_phase:
                     attack_phase = False
                     move_phase = True
