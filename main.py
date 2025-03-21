@@ -137,7 +137,7 @@ else:
     exit()
 
 # Determine the number of starting armies for each player
-army_distribution = {2: 40, 3: 35, 4: 30, 5: 25, 6: 20}
+army_distribution = {2: 25, 3: 35, 4: 30, 5: 25, 6: 20} #40 but 2:10 phase test
 num_players = len(players)
 starting_armies = army_distribution.get(num_players, 20)
 
@@ -177,12 +177,13 @@ selected_destination = None  # For movement phase (destination territory)
 attack_dice = []            # Store the dice rolls for the attacker
 defense_dice = []           # Store the dice rolls for the defender
 
+game_over = False          # Flag to indicate the game is over
 pygame.font.init()
 font = pygame.font.SysFont(None, 24)
     
 # Function next turn button
 def next_turn():
-    global current_player_index, current_player, reinforcement_phase, attack_phase, move_phase, movement_done
+    global current_player_index, current_player, reinforcement_phase, attack_phase, move_phase, movement_done, running
     # Initialize the phase for new turn
     move_phase = False
     attack_phase = False
@@ -193,7 +194,13 @@ def next_turn():
     current_player = players[current_player_index]
     player_armies[current_player] += calculate_reinforcements(current_player)
     print(f"Turn passed. {current_player} starts with {player_armies[current_player]} armies.")
-
+    # Check for victory
+    winner = check_victory()
+    if winner is not None:
+        print(f"VICTORY ! {winner} wins the game!")
+        running = False
+    else:
+        print(f"Turn passed. {current_player} starts with {player_armies[current_player]} armies.")
 
 # Function to verify if two territories are adjacent
 def is_reachable(source, destination, territories):
@@ -253,7 +260,7 @@ def draw_dice_results():
 
 # Function to calculate reinforcements
 def calculate_reinforcements(player):
-    num_territories = len(player_territories[player])
+    num_territories = sum(1 for terr in territories.values() if terr["owner"] == player)
     reinforcements = max(3, num_territories // 3)
     return reinforcements
 
@@ -279,7 +286,10 @@ running = True
 while running:
     # --- Event Handling ---
     for event in pygame.event.get():
-        if event.type == pygame.QUIT:
+        if game_over and event.type != pygame.QUIT:
+            continue
+
+        elif event.type == pygame.QUIT:
             running = False
 
         elif event.type == pygame.MOUSEBUTTONDOWN:
@@ -373,10 +383,16 @@ while running:
                                         selected_defender["owner"] = current_player
                                         selected_defender["armies"] = selected_attacker["armies"] - 1
                                         selected_attacker["armies"] = 1
+
+                                        # Check for victory
+                                        winner = check_victory()
+                                        if winner is not None:
+                                            print(f"VICTORY ! {winner} wins the game!")
+                                            game_over = True
                                     
-                                    # Reset selections after the attack
-                                    selected_attacker = None
-                                    selected_defender = None
+                                        # Reset selections after the attack
+                                        selected_attacker = None
+                                        selected_defender = None
                                 else:
                                     print("Attack not possible! You need at least 2 armies to attack.")
                                     selected_defender = None
@@ -433,5 +449,8 @@ while running:
     # Draw the "Rules" button
     window.blit(rules_img, rules_rect.topleft)
 
+    if game_over:
+        victory_text = font.render(f"VICTORY ! {winner} wins the game!", True, RED)
+        window.blit(victory_text, (WIDTH // 2 - victory_text.get_width() // 2, HEIGHT // 2))
     # Update display
     pygame.display.update()
