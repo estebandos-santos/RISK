@@ -190,6 +190,7 @@ for player, terr_list in player_territories.items():
 # Initialize game variables for phases
 current_player_index = 0
 current_player = players[current_player_index]
+
 placement_phase = True      # This controls the placement phase
 attack_phase = False        # This controls the attack phase
 reinforcement_phase = False # This controls the reinforcement phase
@@ -204,7 +205,10 @@ selected_destination = None  # For movement phase (destination territory)
 attack_dice = []            # Store the dice rolls for the attacker
 defense_dice = []           # Store the dice rolls for the defender
 
+card_won = False           # Flag to indicate if a card was won
+
 game_over = False          # Flag to indicate the game is over
+
 pygame.font.init()
 font = pygame.font.SysFont(None, 24)
 
@@ -225,12 +229,13 @@ def draw_random_card(player):
 
 # Function next turn button
 def next_turn():
-    global current_player_index, current_player, reinforcement_phase, attack_phase, move_phase, movement_done, running
+    global current_player_index, current_player, reinforcement_phase, attack_phase, move_phase, movement_done, card_won, running
     # Initialize the phase for new turn
     move_phase = False
     attack_phase = False
     reinforcement_phase = True
     movement_done = False
+    card_won = False
     # Move to the next player
     current_player_index = (current_player_index + 1) % num_players
     current_player = players[current_player_index]
@@ -449,7 +454,12 @@ while running:
                                             game_over = True
 
                                         # Draw a random card
-                                        draw_random_card(current_player)
+                                        if not card_won:
+                                            draw_random_card(current_player)
+                                            card_won = True
+                                        else:
+                                            print(f"{current_player} already won a card this turn.")
+                                        
 
                                         # Reset selections after the attack
                                         selected_attacker = None
