@@ -44,11 +44,29 @@ player_colors = {
 }
 
 # Deck of cards for the game
-deck = ["Infantry"] * 14 + ["Cavalry"] * 14 + ["Artillery"] * 14 + ["Wild"] * 2
-random.shuffle(deck)
-discard_pile = [] # Discarded cards
-# Dictionary to stock the cards
+territory_cards = list(territories.values())
+num_territories = len(territory_cards)
+
+card_types = (
+    ["Infantry"] * (num_territories // 3) +
+    ["Cavalry"] * (num_territories // 3) +
+    ["Artillery"] * (num_territories // 3)
+)
+random.shuffle(card_types)
+
+deck = []
+discard_pile = []
 player_cards = {player: [] for player in players}
+for territory, card_type in zip(territory_cards, card_types):
+    deck.append({"territory": territory["name"], "type": card_type})
+
+deck.append({"territory": "Wild", "type": "Wild"})
+deck.append({"territory": "Wild", "type": "Wild"})
+
+random.shuffle(deck)
+
+print("Deck of cards created and shuffled.")
+print(deck)
 
 # UI Elements
 input_boxes = []
