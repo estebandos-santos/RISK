@@ -23,6 +23,7 @@ rules_img = pygame.image.load("img/rules.png")
 exchange_img = pygame.image.load("img/exchange.png")
 exchange_img = pygame.transform.scale(exchange_img, (50, 50))
 
+
 # Colors
 WHITE = (255, 255, 255)
 BLACK = (0, 0, 0)
