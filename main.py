@@ -19,6 +19,9 @@ color_map = pygame.image.load("img/mapcolor.png")
 end_phase_img = pygame.image.load("img/next.png")
 # Load Button rules
 rules_img = pygame.image.load("img/rules.png")
+#Load Button exchange
+exchange_img = pygame.image.load("img/exchange.png")
+exchange_img = pygame.transform.scale(exchange_img, (50, 50))
 
 # Colors
 WHITE = (255, 255, 255)
@@ -139,6 +142,10 @@ button_x = WIDTH - new_width - margin
 button_y = HEIGHT - new_height - margin
 end_phase_rect = pygame.Rect(button_x, button_y, new_width, new_height)
 
+# Defin the exchange button
+exchange_img = pygame.transform.scale(exchange_img, (50, 50))
+exchange_rect = exchange_img.get_rect(topleft=(button_x - 60, button_y))
+
 # Scale button rules
 rules_img = pygame.transform.scale(rules_img, (50, 50))
 rules_rect = rules_img.get_rect(topleft=(10, 10))
@@ -191,11 +198,15 @@ for player, terr_list in player_territories.items():
 current_player_index = 0
 current_player = players[current_player_index]
 
-placement_phase = True      # This controls the placement phase
-attack_phase = False        # This controls the attack phase
-reinforcement_phase = False # This controls the reinforcement phase
-move_phase = False          # This controls the movement phase
-movement_done = False       # This controls the movement phase
+placement_phase = True      # Phase 0: Placement
+reinforcement_phase = False # Phase 1: Reinforcement 
+attack_phase = False        # Phase 2: Attack
+move_phase = False          # Phase 3: Movement
+exchange_phase = False      # Phase 4: Card Exchange
+
+movement_done = False       # To limit one movement per turn
+card_exchanged = False      # To limit one exchange per turn
+card_won = False           # Flag to indicate if a card was won
 
 selected_attacker = None    # For attack phase
 selected_defender = None    # For attack phase
@@ -205,14 +216,12 @@ selected_destination = None  # For movement phase (destination territory)
 attack_dice = []            # Store the dice rolls for the attacker
 defense_dice = []           # Store the dice rolls for the defender
 
-card_won = False           # Flag to indicate if a card was won
-
 game_over = False          # Flag to indicate the game is over
 
 pygame.font.init()
 font = pygame.font.SysFont(None, 24)
 
- # Function to have a aleotory card
+# Function to have a aleotory card
 def draw_random_card(player):
     global deck, discard_pile, player_cards
     if not deck:
@@ -227,13 +236,87 @@ def draw_random_card(player):
     player_cards[player].append(card)
     print(f"{player} drew a {card} card")
 
+# Function to exchange cards for armies
+def valid_exchange_set(hand):
+    # Check if the set is valid
+    counts = {"Infantry": 0, "Cavalry": 0, "Artillery": 0, "Wild": 0}
+    for card in hand:
+        counts[card["type"]] += 1
+    
+    # OPTION 1 : check for a set of 3 cards of the same type
+    for t in ["Infantry", "Cavalry", "Artillery"]:
+        if counts[t] + counts["Wild"] >= 3:
+            set_cards = []
+            # Type of cards to exchange
+            for card in hand:
+                if card["type"] == t and len(set_cards) < 3:
+                    set_cards.append(card)
+            # Complete with wild cards
+            if len(set_cards) < 3:
+                for card in hand:
+                    if card["type"] == "Wild" and card not in set_cards:
+                        set_cards.append(card)
+                        if len(set_cards) == 3:
+                            break
+            if len(set_cards) == 3:
+                return set_cards
+    
+    # OPTION 2 : check for a set of 1 of each type
+    needed = {"Infantry", "Cavalry", "Artillery"}
+    set_cards = []
+    wild_cards = []
+    for card in hand:
+        if card["type"] == "Wild":
+            wild_cards.append(card)
+        elif card["type"] in needed:
+            set_cards.append(card)
+            needed.remove(card["type"])
+    missing = len(needed)
+    if len(set_cards) + len(wild_cards) >= 3:
+        while len(set_cards) < 3 and wild_cards:
+            set_cards.append(wild_cards.pop(0))
+        if len(set_cards) == 3:
+            return set_cards
+        
+    return None
+
+def exchange_cards(player):
+    global player_cards, card_exchanged, exchange_count, player_armies
+    hand = player_cards[player]
+    valid_set = valid_exchange_set(hand)
+    if not valid_set:
+        print(f"{player} doesn't have a valid set to exchange.")
+        return
+    
+    # Remove cards from player's hand
+    for card in valid_set:
+        hand.remove(card)
+    exchange_count[player] += 1
+    ex_count = exchange_count[player]
+
+    # Calculate the number of armies to give with bonus
+    bonus_values = [4, 6, 8, 10, 12, 15]
+    if ex_count < len(bonus_values):
+        bonus_reinforcements = bonus_values[ex_count - 1]
+    else:
+        bonus_reinforcements = bonus_values[-1] + 5 * (ex_count - len(bonus_values))
+
+    player_armies[player] += bonus_reinforcements
+    card_exchanged = True
+    print(f"{player} exchanged cards for {bonus_reinforcements} armies")
+
+# Initialize the compt for the number of exchange
+exchange_count = {player: 0 for player in players}
+
 # Function next turn button
 def next_turn():
-    global current_player_index, current_player, reinforcement_phase, attack_phase, move_phase, movement_done, card_won, running
+    global current_player_index, current_player, reinforcement_phase, attack_phase, move_phase, exchange_phase, movement_done, card_exchanged, card_won, running
     # Initialize the phase for new turn
     move_phase = False
     attack_phase = False
     reinforcement_phase = True
+    exchange_phase = False
+    card_exchanged = False
     movement_done = False
     card_won = False
     # Move to the next player
@@ -310,7 +393,6 @@ def draw_dice_results():
 def calculate_reinforcements(player):
     num_territories = sum(1 for terr in territories.values() if terr["owner"] == player)
     base_reinforcements = max(3, num_territories // 3)
-
     # Check for continent bonuses
     bonus = 0
     bonus_messages = []
@@ -388,7 +470,19 @@ while running:
                     move_phase = True
                     print(f"{current_player} is in movement phase.")
                 elif move_phase:
+                    print(f"{current_player} ends movement phase and enters card exchange phase.")
+                    move_phase = False
+                    exchange_phase = True
+                elif exchange_phase:
                     next_turn()
+            elif exchange_rect.collidepoint(mouse_x, mouse_y):
+                if exchange_phase:
+                    if not card_exchanged:
+                        exchange_cards(current_player)
+                    else:
+                        print(f"{current_player} already exchanged cards this turn.")
+                else:
+                    print(f"{current_player} cannot exchange cards now.")
 
             # Handle click on a territory using the color map
             elif 0 <= mouse_x < color_map.get_width() and 0 <= mouse_y < color_map.get_height():
@@ -459,8 +553,6 @@ while running:
                                             card_won = True
                                         else:
                                             print(f"{current_player} already won a card this turn.")
-                                        
-
                                         # Reset selections after the attack
                                         selected_attacker = None
                                         selected_defender = None
@@ -519,6 +611,10 @@ while running:
     
     # Draw the "Rules" button
     window.blit(rules_img, rules_rect.topleft)
+
+    # Draw the "Exchange" button
+    window.blit(exchange_img, exchange_rect.topleft)
+
 
     if game_over:
         victory_text = font.render(f"VICTORY ! {winner} wins the game!", True, RED)
