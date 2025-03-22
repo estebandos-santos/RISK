@@ -49,7 +49,6 @@ player_colors = {
 # Deck of cards for the game
 territory_cards = list(territories.values())
 num_territories = len(territory_cards)
-
 card_types = (
     ["Infantry"] * (num_territories // 3) +
     ["Cavalry"] * (num_territories // 3) +
@@ -130,13 +129,11 @@ def main_menu():
                 else:
                     player_inputs[active_box] += event.unicode
 
-# Scale button pass
+# Scale and position button pass
 scale_factor = 0.2
 new_width = int(end_phase_img.get_width() * scale_factor)
 new_height = int(end_phase_img.get_height() * scale_factor)
 end_phase_img = pygame.transform.scale(end_phase_img, (new_width, new_height))
-
-# Position button pass
 margin = 10
 button_x = WIDTH - new_width - margin 
 button_y = HEIGHT - new_height - margin
@@ -296,14 +293,27 @@ def exchange_cards(player):
 
     # Calculate the number of armies to give with bonus
     bonus_values = [4, 6, 8, 10, 12, 15]
-    if ex_count < len(bonus_values):
+    if ex_count <= len(bonus_values):
         bonus_reinforcements = bonus_values[ex_count - 1]
     else:
         bonus_reinforcements = bonus_values[-1] + 5 * (ex_count - len(bonus_values))
-
-    player_armies[player] += bonus_reinforcements
+    
+    # Bonus if the player has the territory of the card
+    extra_bonus = 0
+    for card in valid_set:
+        if card["territory"] != "Wild":
+            # Check if the player owns the territory
+            for terr_key in player_territories[player]:
+                if territories[terr_key]["name"] == card["territory"]:
+                    extra_bonus += 2
+                    break
+    total_bonus = bonus_reinforcements + extra_bonus
+    player_armies[player] += total_bonus
     card_exchanged = True
-    print(f"{player} exchanged cards for {bonus_reinforcements} armies")
+    if extra_bonus:
+        print(f"{player} exchanged cards for {bonus_reinforcements} base bonus + {extra_bonus} extra bonus (territories match) = {total_bonus} armies")
+    else:
+        print(f"{player} exchanged cards for {total_bonus} bonus armies")
 
 # Initialize the compt for the number of exchange
 exchange_count = {player: 0 for player in players}
