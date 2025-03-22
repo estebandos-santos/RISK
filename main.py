@@ -43,6 +43,13 @@ player_colors = {
     "Player 6": (0, 255, 255)
 }
 
+# Deck of cards for the game
+deck = ["Infantry"] * 14 + ["Cavalry"] * 14 + ["Artillery"] * 14 + ["Wild"] * 2
+random.shuffle(deck)
+discard_pile = [] # Discarded cards
+# Dictionary to stock the cards
+player_cards = {player: [] for player in players}
+
 # UI Elements
 input_boxes = []
 player_inputs = ["Player 1", "Player 2", "Player 3", "Player 4", "Player 5", "Player 6"]
@@ -182,7 +189,22 @@ defense_dice = []           # Store the dice rolls for the defender
 game_over = False          # Flag to indicate the game is over
 pygame.font.init()
 font = pygame.font.SysFont(None, 24)
+
+ # Function to have a aleotory card
+def draw_random_card(player):
+    global deck, discard_pile, player_cards
+    if not deck:
+        deck = discard_pile.copy()
+        discard_pile = []
+        random.shuffle(deck)
+        print("Deck reshuffled")
     
+    card = random.choice(deck)
+    deck.remove(card)
+    discard_pile.append(card)
+    player_cards[player].append(card)
+    print(f"{player} drew a {card} card")
+
 # Function next turn button
 def next_turn():
     global current_player_index, current_player, reinforcement_phase, attack_phase, move_phase, movement_done, running
@@ -407,7 +429,10 @@ while running:
                                         if winner is not None:
                                             print(f"VICTORY ! {winner} wins the game!")
                                             game_over = True
-                                    
+
+                                        # Draw a random card
+                                        draw_random_card(current_player)
+
                                         # Reset selections after the attack
                                         selected_attacker = None
                                         selected_defender = None
