@@ -196,10 +196,10 @@ current_player_index = 0
 current_player = players[current_player_index]
 
 placement_phase = True      # Phase 0: Placement
-reinforcement_phase = False # Phase 1: Reinforcement 
-attack_phase = False        # Phase 2: Attack
-move_phase = False          # Phase 3: Movement
-exchange_phase = False      # Phase 4: Card Exchange
+exchange_phase = False      # Phase 1: Card Exchange
+reinforcement_phase = False # Phase 2: Reinforcement 
+attack_phase = False        # Phase 3: Attack
+move_phase = False          # Phase 4: Movement
 
 movement_done = False       # To limit one movement per turn
 card_exchanged = False      # To limit one exchange per turn
@@ -325,7 +325,7 @@ def next_turn():
     move_phase = False
     attack_phase = False
     reinforcement_phase = True
-    exchange_phase = False
+    exchange_phase = True
     card_exchanged = False
     movement_done = False
     card_won = False
@@ -484,6 +484,7 @@ while running:
                     move_phase = False
                     exchange_phase = True
                 elif exchange_phase:
+                    print(f"{current_player} ends card exchange phase and ends his turn.")
                     next_turn()
             elif exchange_rect.collidepoint(mouse_x, mouse_y):
                 if exchange_phase:
